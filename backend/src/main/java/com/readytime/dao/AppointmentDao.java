@@ -54,10 +54,6 @@ public class AppointmentDao {
         return query(conn, SELECT + "WHERE a.provider_id = ? ORDER BY a.start_at DESC", providerId);
     }
 
-    public List<Appointment> findByBusiness(Connection conn, int businessId) throws SQLException {
-        return query(conn, SELECT + "WHERE p.business_id = ? ORDER BY a.start_at DESC", businessId);
-    }
-
     public List<Appointment> findAll(Connection conn) throws SQLException {
         return query(conn, SELECT + "ORDER BY a.start_at DESC");
     }

@@ -1,5 +1,5 @@
 // Appointments table with status tabs and optional provider / date filters.
-// Used by the provider schedule and the business admin appointments page.
+// Used by the provider schedule page.
 import { esc, person, prettyDate, showDuration, showTime, minutesBetween, emptyState, statusBadge,
          optionsHtml, todayInKigali, addDays } from '../utils.js';
 import { icon } from '../icons.js';

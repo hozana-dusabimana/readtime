@@ -36,7 +36,18 @@ function showPublicPage() {
     document.title = route.title + ' - ReadyTime';
     drawPublicLayout(PUBLIC_ROUTES, route);
     window.scrollTo(0, 0);
-    run(() => route.render($('app'), params));
+    run(() => route.render(newPageBox(), params));
+}
+
+/**
+ * Each page gets its own new box inside <main id="app">. If the user switches pages while
+ * the old page is still loading, the old page can only draw into its old box (no longer on
+ * screen), so it never covers the new page.
+ */
+function newPageBox() {
+    const box = document.createElement('div');
+    $('app').replaceChildren(box);
+    return box;
 }
 
 function showAppPage() {
@@ -54,8 +65,9 @@ function showAppPage() {
     drawSidebar(routes, route, logout);
     setPageTitle(route.title, route.subtitle);
     document.body.classList.remove('menu-open');
-    $('app').innerHTML = '<div class="empty">Loading...</div>';
-    run(() => route.render($('app'), params));
+    const box = newPageBox();
+    box.innerHTML = '<div class="empty">Loading...</div>';
+    run(() => route.render(box, params));
 }
 
 /** Called by the login and signup pages after a successful login. */

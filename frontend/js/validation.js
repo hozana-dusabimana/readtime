@@ -29,6 +29,14 @@ export function checkPassword(password) {
     return '';
 }
 
+/** Any text field with a length limit, e.g. business name (2-100) or address (2-200). */
+export function checkText(value, fieldName, min, max) {
+    const v = (value || '').trim();
+    if (v.length === 0) return `Please enter the ${fieldName.toLowerCase()}.`;
+    if (v.length < min || v.length > max) return `${fieldName} must be ${min} to ${max} characters.`;
+    return '';
+}
+
 export function checkPasswordsMatch(password, confirm) {
     if ((confirm || '').length === 0) return 'Please type the password again.';
     return password === confirm ? '' : 'The two passwords are not the same.';

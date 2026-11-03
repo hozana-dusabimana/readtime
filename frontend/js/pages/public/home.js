@@ -80,7 +80,7 @@ export function renderHome(container) {
             ${feature('alert', 'red', 'No-show protection',
                 'After 3 missed appointments, booking is paused until an admin reviews the account.')}
             ${feature('users', 'blue', 'A dashboard for every role',
-                'Clients, providers, business admins and platform admins each get their own pages.')}
+                'Clients, service providers and the platform admin each get their own pages.')}
           </div>
         </div>
       </section>

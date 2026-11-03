@@ -9,6 +9,7 @@ import com.readytime.service.AppointmentService;
 import com.readytime.service.AuthService;
 import com.readytime.service.BusinessService;
 import com.readytime.service.CatalogService;
+import com.readytime.service.ReportService;
 
 import java.util.Arrays;
 import java.util.List;
@@ -21,11 +22,16 @@ import java.util.Map;
 public class ApiRoutes {
 
     public static void register(Router r, AuthService auth, AdminService admin, BusinessService business,
-                                CatalogService catalog, AppointmentService appointments) {
+                                CatalogService catalog, AppointmentService appointments, ReportService reports) {
 
         // ---------- Login / register (no login needed) ----------
         r.add("POST", "/api/register", req ->
                 auth.register(req.bodyString("fullName"), req.bodyString("email"), req.bodyString("password")));
+
+        // A service provider signs up together with their business (name + address).
+        r.add("POST", "/api/register/provider", req ->
+                auth.registerProvider(req.bodyString("fullName"), req.bodyString("email"), req.bodyString("password"),
+                        req.bodyString("businessName"), req.bodyString("businessAddress")));
 
         // Returns {"token": "...", "user": {...}}. The frontend keeps the token and sends it
         // back with every request in the header "Authorization: Bearer <token>".
@@ -38,8 +44,29 @@ public class ApiRoutes {
 
         r.add("GET", "/api/me", req -> req.user());
 
+        // ---------- My Profile (every logged-in user) ----------
+        r.add("PUT", "/api/me", req ->
+                auth.updateProfile(req.user(), req.bodyString("fullName"), req.bodyString("email")));
+
+        r.add("PUT", "/api/me/password", req -> {
+            auth.changePassword(req.user(), req.bodyString("currentPassword"), req.bodyString("newPassword"));
+            return null;
+        });
+
+        // ---------- Reports (system admin: everything, provider: own appointments) ----------
+        r.add("GET", "/api/reports/appointments", req ->
+                reports.appointmentReport(req.user(), req.queryDate("from"), req.queryDate("to")));
+
         // ---------- System admin ----------
         r.add("GET", "/api/admin/users", req -> admin.listUsers(req.user()));
+
+        r.add("POST", "/api/admin/users", req ->
+                admin.createUser(req.user(), req.bodyString("fullName"), req.bodyString("email"),
+                        req.bodyString("password"), req.bodyString("role"), req.bodyInt("businessId")));
+
+        r.add("PUT", "/api/admin/users/{id}", req ->
+                admin.updateUser(req.user(), req.pathInt("id"), req.bodyString("fullName"), req.bodyString("email"),
+                        req.bodyInt("businessId"), req.bodyString("newPassword")));
 
         r.add("POST", "/api/admin/users/{id}/unblock", req -> {
             admin.unblockClient(req.user(), req.pathInt("id"));
@@ -54,13 +81,17 @@ public class ApiRoutes {
         r.add("POST", "/api/admin/businesses", req ->
                 admin.createBusiness(req.user(), req.bodyString("name"), req.bodyString("address")));
 
+        r.add("PUT", "/api/admin/businesses/{id}", req ->
+                admin.updateBusiness(req.user(), req.pathInt("id"), req.bodyString("name"), req.bodyString("address")));
+
         r.add("POST", "/api/admin/businesses/{id}/active", req -> {
             admin.setBusinessActive(req.user(), req.pathInt("id"), req.bodyBoolean("active", true));
             return null;
         });
 
-        r.add("POST", "/api/admin/businesses/{id}/admins", req ->
-                admin.createBusinessAdmin(req.user(), req.pathInt("id"),
+        // System admin adds a service provider to a business
+        r.add("POST", "/api/admin/businesses/{id}/providers", req ->
+                admin.createProvider(req.user(), req.pathInt("id"),
                         req.bodyString("fullName"), req.bodyString("email"), req.bodyString("password")));
 
         // ---------- Businesses and providers ----------
@@ -70,10 +101,6 @@ public class ApiRoutes {
             req.user();   // must be logged in
             return business.listProviders(req.pathInt("id"));
         });
-
-        r.add("POST", "/api/providers", req ->
-                business.createProvider(req.user(),
-                        req.bodyString("fullName"), req.bodyString("email"), req.bodyString("password")));
 
         // ---------- Services ----------
         r.add("GET", "/api/providers/{id}/services", req -> catalog.listServices(req.user(), req.pathInt("id")));

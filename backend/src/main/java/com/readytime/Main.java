@@ -5,6 +5,8 @@ import com.readytime.service.AppointmentService;
 import com.readytime.service.AuthService;
 import com.readytime.service.BusinessService;
 import com.readytime.service.CatalogService;
+import com.readytime.service.ReportService;
+import com.readytime.service.DemoData;
 import com.readytime.web.ApiRoutes;
 import com.readytime.web.Router;
 import com.sun.net.httpserver.HttpServer;
@@ -23,14 +25,18 @@ public class Main {
         TimeProvider time = TimeProvider.system();
         AuthService auth = new AuthService(db, time);
         AdminService admin = new AdminService(db, auth);
-        BusinessService business = new BusinessService(db, auth);
+        BusinessService business = new BusinessService(db);
         CatalogService catalog = new CatalogService(db, time);
         AppointmentService appointments = new AppointmentService(db, time);
+        ReportService reports = new ReportService(db);
 
-        auth.createFirstSystemAdmin("admin@readytime.com", "Admin@1234");
+        auth.createFirstSystemAdmin(DemoData.ADMIN_EMAIL, DemoData.ADMIN_PASSWORD);
+        if (config.seedDemo()) {
+            new DemoData().seed(db);   // demo provider and client (see README)
+        }
 
         Router router = new Router(auth, config.corsOrigin());
-        ApiRoutes.register(router, auth, admin, business, catalog, appointments);
+        ApiRoutes.register(router, auth, admin, business, catalog, appointments, reports);
 
         // The backend only answers API requests with JSON. The frontend is a separate website.
         HttpServer server = HttpServer.create(new InetSocketAddress(config.port()), 0);

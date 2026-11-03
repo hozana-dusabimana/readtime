@@ -107,6 +107,36 @@ public class UserDao {
         }
     }
 
+    /** Changes name and email (used by "My Profile" and by the system admin). */
+    public void updateNameAndEmail(Connection conn, int userId, String fullName, String email) throws SQLException {
+        try (PreparedStatement ps = conn.prepareStatement("UPDATE users SET full_name = ?, email = ? WHERE id = ?")) {
+            ps.setString(1, fullName);
+            ps.setString(2, email);
+            ps.setInt(3, userId);
+            ps.executeUpdate();
+        }
+    }
+
+    public void updateBusiness(Connection conn, int userId, Integer businessId) throws SQLException {
+        try (PreparedStatement ps = conn.prepareStatement("UPDATE users SET business_id = ? WHERE id = ?")) {
+            if (businessId == null) {
+                ps.setNull(1, Types.INTEGER);
+            } else {
+                ps.setInt(1, businessId);
+            }
+            ps.setInt(2, userId);
+            ps.executeUpdate();
+        }
+    }
+
+    public void updatePasswordHash(Connection conn, int userId, String passwordHash) throws SQLException {
+        try (PreparedStatement ps = conn.prepareStatement("UPDATE users SET password_hash = ? WHERE id = ?")) {
+            ps.setString(1, passwordHash);
+            ps.setInt(2, userId);
+            ps.executeUpdate();
+        }
+    }
+
     public void setActive(Connection conn, int userId, boolean active) throws SQLException {
         try (PreparedStatement ps = conn.prepareStatement("UPDATE users SET active = ? WHERE id = ?")) {
             ps.setBoolean(1, active);

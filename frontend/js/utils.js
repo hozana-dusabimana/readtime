@@ -7,7 +7,6 @@ export const DAYS = ['', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday',
 export const ROLE_NAMES = {
     CLIENT: 'Client',
     PROVIDER: 'Service Provider',
-    BUSINESS_ADMIN: 'Business Admin',
     SYSTEM_ADMIN: 'System Admin'
 };
 

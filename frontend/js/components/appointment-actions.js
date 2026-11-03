@@ -29,7 +29,7 @@ export function actionButtons(a) {
           <button class="small secondary" data-action="reschedule" data-id="${a.id}" ${allowed ? '' : 'disabled'}>Reschedule</button>
           <button class="small danger" data-action="cancel" data-id="${a.id}" ${allowed ? '' : 'disabled'}>Cancel</button>`;
     }
-    // Provider and business admin
+    // Provider
     if (hasStarted(a)) {
         return `
           <button class="small success" data-action="COMPLETED" data-id="${a.id}">Mark completed</button>

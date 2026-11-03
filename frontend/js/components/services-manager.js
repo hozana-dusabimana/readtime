@@ -1,12 +1,12 @@
 // Services table with add / edit pop-ups and an active switch.
-// Provider: manages only their own services. Business admin: services of all their providers.
+// Provider: manages their own services.
 import { api } from '../api.js';
 import { icon } from '../icons.js';
 import { esc, emptyState, formData, money, optionsHtml, run, showDuration } from '../utils.js';
 import { openModal } from './modal.js';
 
 /**
- * providers: list of providers whose services are shown (one item for a provider, many for a business admin).
+ * providers: list of providers whose services are shown (normally just the logged-in provider).
  * selectedProviderId: (optional) pre-selected provider filter.
  */
 export async function drawServicesManager(container, providers, selectedProviderId) {

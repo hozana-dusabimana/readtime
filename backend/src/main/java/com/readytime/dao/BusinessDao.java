@@ -45,6 +45,15 @@ public class BusinessDao {
         }
     }
 
+    public void update(Connection conn, int id, String name, String address) throws SQLException {
+        try (PreparedStatement ps = conn.prepareStatement("UPDATE businesses SET name = ?, address = ? WHERE id = ?")) {
+            ps.setString(1, name);
+            ps.setString(2, address);
+            ps.setInt(3, id);
+            ps.executeUpdate();
+        }
+    }
+
     public void setActive(Connection conn, int id, boolean active) throws SQLException {
         try (PreparedStatement ps = conn.prepareStatement("UPDATE businesses SET active = ? WHERE id = ?")) {
             ps.setBoolean(1, active);

@@ -21,6 +21,7 @@
 }
 
 * { box-sizing: border-box; }
+[hidden] { display: none !important; }   /* hidden always wins over display: flex */
 
 body {
     margin: 0;
@@ -432,3 +433,11 @@ input.invalid { border-color: var(--red); background: #fffafa; }
 .review span { color: var(--muted); }
 .step-buttons { display: flex; gap: 10px; }
 .step-buttons button { flex: 1; }
+
+/* Printing (e.g. a report): hide the menus and buttons, print only the page content */
+@media print {
+    .sidebar, .topbar, .public-nav, .public-footer, #message, button, .tabs { display: none !important; }
+    .main { margin-left: 0; }
+    body { background: white; }
+    .card, .stat { break-inside: avoid; }
+}

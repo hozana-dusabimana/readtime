@@ -39,4 +39,5 @@ public class Config {
     public String dbPassword() { return get("db.password", "DB_PASSWORD", ""); }
     public int port()          { return Integer.parseInt(get("port", "PORT", "8080")); }
     public String corsOrigin() { return get("cors.origin", "CORS_ORIGIN", "*"); }
+    public boolean seedDemo()  { return Boolean.parseBoolean(get("seed.demo", "SEED_DEMO", "true")); }
 }

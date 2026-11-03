@@ -20,7 +20,7 @@ export async function renderPlatformOverview(container) {
     container.innerHTML = `
       <div class="grid cols-4" style="margin-bottom: 20px;">
         ${statCard('Platform users', users.length,
-            `${count('CLIENT')} clients · ${count('PROVIDER')} providers · ${count('BUSINESS_ADMIN') + count('SYSTEM_ADMIN')} admins`, 'users', 'blue')}
+            `${count('CLIENT')} clients · ${count('PROVIDER')} providers · ${count('SYSTEM_ADMIN')} admins`, 'users', 'blue')}
         ${statCard('Businesses', businesses.length, `${activeBusinesses} active · ${businesses.length - activeBusinesses} inactive`, 'building', 'green')}
         ${statCard('Blocked clients', blocked, `${warnings} more with 1-2 no-shows`, 'shield', 'red')}
         ${statCard('Appointments', appointments.length, `${booked} booked · ${completed} completed`, 'calendar', 'purple')}

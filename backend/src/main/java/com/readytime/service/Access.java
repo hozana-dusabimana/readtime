@@ -20,18 +20,9 @@ public class Access {
         throw new AppException(403, "You are not allowed to do this.");
     }
 
-    /**
-     * A provider's data (services, hours, appointments) can be managed by
-     * the provider themself, or by the business admin of the same business.
-     */
+    /** A provider's data (services, hours, appointments) can only be managed by that provider. */
     public static boolean canManageProvider(User user, User provider) {
-        if (user.role() == Role.PROVIDER) {
-            return user.id() == provider.id();
-        }
-        if (user.role() == Role.BUSINESS_ADMIN) {
-            return user.businessId() != null && user.businessId().equals(provider.businessId());
-        }
-        return false;
+        return user.role() == Role.PROVIDER && user.id() == provider.id();
     }
 
     public static void requireCanManageProvider(User user, User provider) {
@@ -39,7 +30,7 @@ public class Access {
             throw new AppException(404, "Provider not found.");
         }
         if (!canManageProvider(user, provider)) {
-            throw new AppException(403, "You can only manage your own (or your business's) providers.");
+            throw new AppException(403, "You can only manage your own services, hours and appointments.");
         }
     }
 }

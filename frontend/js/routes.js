@@ -11,15 +11,12 @@ import { renderMyAppointments } from './pages/client/my-appointments.js';
 import { renderSchedule } from './pages/provider/schedule.js';
 import { renderMyHours } from './pages/provider/hours.js';
 import { renderMyServices } from './pages/provider/services.js';
-import { renderBusinessOverview } from './pages/business-admin/overview.js';
-import { renderBusinessServices } from './pages/business-admin/services.js';
-import { renderProviders } from './pages/business-admin/providers.js';
-import { renderProviderHours } from './pages/business-admin/provider-hours.js';
-import { renderBusinessAppointments } from './pages/business-admin/appointments.js';
 import { renderPlatformOverview } from './pages/system-admin/overview.js';
 import { renderModeration } from './pages/system-admin/moderation.js';
 import { renderBusinesses } from './pages/system-admin/businesses.js';
 import { renderUsers } from './pages/system-admin/users.js';
+import { renderProfile } from './pages/account/profile.js';
+import { renderReports } from './pages/account/reports.js';
 
 // Pages for visitors who are NOT logged in (top menu instead of sidebar).
 export const PUBLIC_ROUTES = [
@@ -37,7 +34,10 @@ export const ROUTES = {
         { path: '/book', label: 'Book Appointment', icon: 'calendarPlus', render: renderBook,
           title: 'Book an Appointment', subtitle: 'Choose a practice, a practitioner, a service and a free time.' },
         { path: '/appointments', label: 'My Appointments', icon: 'list', render: renderMyAppointments,
-          title: 'My Appointments', subtitle: 'See your visits, reschedule or cancel them.' }
+          title: 'My Appointments', subtitle: 'See your visits, reschedule or cancel them.' },
+        { section: 'Account' },
+        { path: '/profile', label: 'My Profile', icon: 'user', render: renderProfile,
+          title: 'My Profile', subtitle: 'Your details and password.' }
     ],
     PROVIDER: [
         { section: 'My work' },
@@ -46,20 +46,12 @@ export const ROUTES = {
         { path: '/hours', label: 'Working Hours', icon: 'clock', render: renderMyHours,
           title: 'Working Hours', subtitle: 'Your weekly availability. Breaks are the gaps between periods.' },
         { path: '/services', label: 'My Services', icon: 'tag', render: renderMyServices,
-          title: 'My Services', subtitle: 'What clients can book with you.' }
-    ],
-    BUSINESS_ADMIN: [
-        { section: 'My business' },
-        { path: '/overview', label: 'Overview', icon: 'grid', render: renderBusinessOverview,
-          title: 'Business Overview', subtitle: 'Key numbers for your business.' },
-        { path: '/services', label: 'Services', icon: 'tag', render: renderBusinessServices,
-          title: 'Service Offerings', subtitle: 'Services of all providers in your business.' },
-        { path: '/providers', label: 'Providers', icon: 'users', render: renderProviders,
-          title: 'Provider Roster', subtitle: 'Your providers, their hours and services.' },
-        { path: '/provider-hours', hidden: true, render: renderProviderHours,
-          title: 'Provider Working Hours', subtitle: 'Weekly availability of one provider.' },
-        { path: '/appointments', label: 'Appointments', icon: 'list', render: renderBusinessAppointments,
-          title: 'Appointments & Attendance', subtitle: 'Every appointment in your business.' }
+          title: 'My Services', subtitle: 'What clients can book with you.' },
+        { path: '/reports', label: 'Reports', icon: 'chart', render: renderReports,
+          title: 'Reports', subtitle: 'Your appointments, attendance and revenue for a period.' },
+        { section: 'Account' },
+        { path: '/profile', label: 'My Profile', icon: 'user', render: renderProfile,
+          title: 'My Profile', subtitle: 'Your details and password.' }
     ],
     SYSTEM_ADMIN: [
         { section: 'Platform' },
@@ -67,10 +59,15 @@ export const ROUTES = {
           title: 'Platform Overview', subtitle: 'Users, businesses and bookings across ReadyTime.' },
         { path: '/moderation', label: 'Client Moderation', icon: 'shield', render: renderModeration,
           title: 'Client Moderation', subtitle: 'No-shows, blocked clients and unblocking.' },
+        { path: '/reports', label: 'Reports', icon: 'chart', render: renderReports,
+          title: 'Reports', subtitle: 'Appointments, attendance and revenue across the platform.' },
         { section: 'Accounts' },
         { path: '/businesses', label: 'Businesses', icon: 'building', render: renderBusinesses,
-          title: 'Businesses', subtitle: 'Business accounts and their admins.' },
+          title: 'Businesses', subtitle: 'Businesses and their service providers.' },
         { path: '/users', label: 'User Accounts', icon: 'users', render: renderUsers,
-          title: 'User Accounts', subtitle: 'Every account on the platform.' }
+          title: 'User Accounts', subtitle: 'Register, edit, disable and enable accounts.' },
+        { section: 'Account' },
+        { path: '/profile', label: 'My Profile', icon: 'user', render: renderProfile,
+          title: 'My Profile', subtitle: 'Your details and password.' }
     ]
 };

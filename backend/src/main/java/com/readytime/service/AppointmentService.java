@@ -143,9 +143,9 @@ public class AppointmentService {
 
     // ---------------- Completed / No-show ----------------
 
-    /** Provider or business admin marks a BOOKED appointment as COMPLETED or NO_SHOW after it started. */
+    /** The provider marks a BOOKED appointment as COMPLETED or NO_SHOW after it started. */
     public Appointment markStatus(User me, int appointmentId, AppointmentStatus newStatus) {
-        Access.requireRole(me, Role.PROVIDER, Role.BUSINESS_ADMIN);
+        Access.requireRole(me, Role.PROVIDER);
         if (newStatus != AppointmentStatus.COMPLETED && newStatus != AppointmentStatus.NO_SHOW) {
             throw new AppException(400, "Status must be COMPLETED or NO_SHOW.");
         }
@@ -166,12 +166,11 @@ public class AppointmentService {
 
     // ---------------- Listing ----------------
 
-    /** Each role sees a different list: their own, their business's, or (system admin) all. */
+    /** Each role sees a different list: clients and providers their own, the system admin all. */
     public List<Appointment> listFor(User me) {
         return db.run(conn -> switch (me.role()) {
             case CLIENT -> appointmentDao.findByClient(conn, me.id());
             case PROVIDER -> appointmentDao.findByProvider(conn, me.id());
-            case BUSINESS_ADMIN -> appointmentDao.findByBusiness(conn, me.businessId());
             case SYSTEM_ADMIN -> appointmentDao.findAll(conn);
         });
     }
@@ -197,11 +196,11 @@ public class AppointmentService {
         }
     }
 
-    /** Client: only their own appointments. Provider / business admin: appointments they manage. */
+    /** Client: only their own appointments. Provider: only appointments with them. */
     private void requireCanChange(Connection conn, User me, Appointment a) throws SQLException {
         boolean allowed = switch (me.role()) {
             case CLIENT -> a.clientId() == me.id();
-            case PROVIDER, BUSINESS_ADMIN -> Access.canManageProvider(me, userDao.findById(conn, a.providerId()));
+            case PROVIDER -> Access.canManageProvider(me, userDao.findById(conn, a.providerId()));
             case SYSTEM_ADMIN -> false;
         };
         if (!allowed) {

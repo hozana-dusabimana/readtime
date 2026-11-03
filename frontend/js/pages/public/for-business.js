@@ -11,7 +11,7 @@ export function renderForBusiness(container) {
             <p class="lead">Set your providers, services and working hours once. ReadyTime turns them into
               bookable times and keeps every calendar free of double-bookings.</p>
             <div class="cta">
-              <a class="button large" href="#/login">Log in to your business</a>
+              <a class="button large" href="#/signup?as=provider" id="provider-signup">Register as a provider</a>
               <a class="button large secondary" href="#/how-it-works">How booking works</a>
             </div>
           </div>
@@ -26,13 +26,13 @@ export function renderForBusiness(container) {
             <h2>Everyone gets the right tools</h2>
             <p>Each person only sees and changes what their role allows - checked by the server on every request.</p>
           </div>
-          <div class="grid cols-3">
-            ${role('building', 'blue', 'Business admin',
-                ['Adds providers to the business', 'Manages every provider\'s services and hours', 'Sees all appointments and attendance'])}
+          <div class="grid cols-2">
             ${role('user', 'green', 'Service provider',
-                ['Sets weekly working hours and breaks', 'Creates services with duration and price', 'Marks visits completed or no-show'])}
+                ['Sets weekly working hours and breaks', 'Creates services with duration and price',
+                 'Sees their appointments and marks visits completed or no-show'])}
             ${role('shield', 'purple', 'System admin',
-                ['Registers businesses and their admins', 'Enables or disables user accounts', 'Reviews and unblocks clients'])}
+                ['Registers businesses and adds their service providers', 'Enables or disables user accounts',
+                 'Reviews and unblocks clients'])}
           </div>
         </div>
       </section>
@@ -57,8 +57,8 @@ export function renderForBusiness(container) {
         <div class="container">
           <div class="cta-banner">
             <div><h2>Want your business on ReadyTime?</h2>
-              <p>Business accounts are created by the ReadyTime system admin. Ask them to register your business.</p></div>
-            <a class="button large" href="#/login">Log in ${icon('right')}</a>
+              <p>Register yourself and your business in a few steps, then add your services and working hours.</p></div>
+            <a class="button large" href="#/signup?as=provider">Register as a provider ${icon('right')}</a>
           </div>
         </div>
       </section>`;

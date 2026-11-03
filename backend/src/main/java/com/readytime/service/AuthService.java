@@ -3,12 +3,15 @@ package com.readytime.service;
 import com.readytime.AppException;
 import com.readytime.Database;
 import com.readytime.TimeProvider;
+import com.readytime.dao.BusinessDao;
 import com.readytime.dao.SessionDao;
 import com.readytime.dao.UserDao;
 import com.readytime.model.Role;
 import com.readytime.model.User;
 
 import javax.crypto.SecretKeyFactory;
+import java.sql.Connection;
+import java.sql.SQLException;
 import javax.crypto.spec.PBEKeySpec;
 import java.security.MessageDigest;
 import java.security.SecureRandom;
@@ -27,6 +30,7 @@ public class AuthService {
     private final TimeProvider time;
     private final UserDao userDao = new UserDao();
     private final SessionDao sessionDao = new SessionDao();
+    private final BusinessDao businessDao = new BusinessDao();
     private final SecureRandom random = new SecureRandom();
 
     public AuthService(Database db, TimeProvider time) {
@@ -39,7 +43,27 @@ public class AuthService {
         return createUser(fullName, email, password, Role.CLIENT, null);
     }
 
-    /** Used by register() and by admins who create provider / business admin accounts. */
+    /**
+     * Public sign-up for a SERVICE PROVIDER: creates their business and their provider account
+     * together. Both are saved in ONE transaction, so if anything fails nothing is saved.
+     */
+    public User registerProvider(String fullName, String email, String password,
+                                 String businessName, String businessAddress) {
+        String name = Validate.text(fullName, "Full name", 2, 100);
+        String cleanEmail = Validate.email(email);
+        Validate.password(password);
+        String cleanBusinessName = Validate.text(businessName, "Business name", 2, 100);
+        String cleanAddress = Validate.text(businessAddress, "Address", 2, 200);
+        String hash = hashPassword(password);
+        return db.transaction(conn -> {
+            requireEmailFree(conn, cleanEmail, -1);
+            int businessId = businessDao.insert(conn, cleanBusinessName, cleanAddress);
+            int id = userDao.insert(conn, name, cleanEmail, hash, Role.PROVIDER, businessId);
+            return userDao.findById(conn, id);
+        });
+    }
+
+    /** Used by register() and by admins who create provider accounts. */
     public User createUser(String fullName, String email, String password, Role role, Integer businessId) {
         String name = Validate.text(fullName, "Full name", 2, 100);
         String cleanEmail = Validate.email(email);
@@ -94,6 +118,39 @@ public class AuthService {
             User user = userDao.findById(conn, userId);
             return (user != null && user.active()) ? user : null;
         });
+    }
+
+    // ---------- My Profile (every logged-in user) ----------
+
+    /** Changes the logged-in user's own name and email. */
+    public User updateProfile(User me, String fullName, String email) {
+        String name = Validate.text(fullName, "Full name", 2, 100);
+        String cleanEmail = Validate.email(email);
+        return db.run(conn -> {
+            requireEmailFree(conn, cleanEmail, me.id());
+            userDao.updateNameAndEmail(conn, me.id(), name, cleanEmail);
+            return userDao.findById(conn, me.id());
+        });
+    }
+
+    /** Changes the logged-in user's own password. The current password must be given. */
+    public void changePassword(User me, String currentPassword, String newPassword) {
+        Validate.password(newPassword);
+        db.run(conn -> {
+            if (currentPassword == null || !checkPassword(currentPassword, userDao.findPasswordHash(conn, me.id()))) {
+                throw new AppException(400, "Your current password is wrong.");
+            }
+            userDao.updatePasswordHash(conn, me.id(), hashPassword(newPassword));
+            return null;
+        });
+    }
+
+    /** Throws 409 if ANOTHER account already uses this email. */
+    static void requireEmailFree(Connection conn, String email, int ownId) throws SQLException {
+        User other = new UserDao().findByEmail(conn, email);
+        if (other != null && other.id() != ownId) {
+            throw new AppException(409, "An account with this email already exists.");
+        }
     }
 
     /** Creates the first System Admin on the very first start, so someone can log in. */

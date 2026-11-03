@@ -19,8 +19,8 @@ CREATE TABLE IF NOT EXISTS users (
     email          VARCHAR(100) NOT NULL UNIQUE,
     password_hash  VARCHAR(200) NOT NULL,
     role           VARCHAR(20)  NOT NULL
-                   CHECK (role IN ('CLIENT', 'PROVIDER', 'BUSINESS_ADMIN', 'SYSTEM_ADMIN')),
-    business_id    INT REFERENCES businesses(id),   -- only for PROVIDER and BUSINESS_ADMIN
+                   CHECK (role IN ('CLIENT', 'PROVIDER', 'SYSTEM_ADMIN')),
+    business_id    INT REFERENCES businesses(id),   -- the business a PROVIDER works at
     no_show_count  INT NOT NULL DEFAULT 0,
     blocked        BOOLEAN NOT NULL DEFAULT FALSE,  -- TRUE after 3 no-shows
     active         BOOLEAN NOT NULL DEFAULT TRUE,   -- FALSE = account disabled by system admin
@@ -77,3 +77,9 @@ CREATE TABLE IF NOT EXISTS sessions (
     user_id     INT NOT NULL REFERENCES users(id),
     expires_at  TIMESTAMP NOT NULL
 );
+
+-- Upgrade for older databases: the BUSINESS_ADMIN role was merged into PROVIDER.
+-- Old business admin accounts become providers, then the role list is tightened.
+UPDATE users SET role = 'PROVIDER' WHERE role = 'BUSINESS_ADMIN';
+ALTER TABLE users DROP CONSTRAINT IF EXISTS users_role_check;
+ALTER TABLE users ADD CONSTRAINT users_role_check CHECK (role IN ('CLIENT', 'PROVIDER', 'SYSTEM_ADMIN'));
