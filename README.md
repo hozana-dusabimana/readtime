@@ -4,11 +4,11 @@ The project has two separate parts:
 
 | Folder | What it is | Runs on |
 |---|---|---|
-| `backend/` | Java 24 REST API (plain Java, built-in `HttpServer`, JDBC + PostgreSQL). Only answers with JSON. | http://localhost:8080/api |
-| `frontend/` | Plain HTML, CSS and JavaScript website that calls the API. | http://localhost:5500 |
+| `backend/` | Java 24 **Spring Boot 3.5** REST API (Spring MVC, JdbcTemplate + PostgreSQL). Only answers with JSON. | http://localhost:8080/api |
+| `frontend/` | **React 18** single-page app (Vite, React Router) that calls the API. | http://localhost:5500 |
 
 ```
-Browser ──► frontend (index.html + app.js) ──fetch, JSON──► backend API (Java) ──JDBC──► PostgreSQL
+Browser ──► frontend (React) ──fetch, JSON──► backend API (Spring Boot) ──JdbcTemplate──► PostgreSQL
 ```
 
 ## 1. One-time setup
@@ -19,9 +19,10 @@ Browser ──► frontend (index.html + app.js) ──fetch, JSON──► back
    ```
 2. In `backend/`, copy `config.example.properties` to `config.properties` and fill in your database user/password.
    `config.properties` is in `.gitignore`, so your password never goes into Git.
-   Environment variables `DB_URL`, `DB_USER`, `DB_PASSWORD`, `PORT` and `CORS_ORIGIN` override the file.
+   Spring Boot reads it on start (`spring.config.import` in `backend/src/main/resources/application.properties`).
+   Environment variables `DB_URL`, `DB_USER`, `DB_PASSWORD`, `PORT`, `CORS_ORIGIN` and `SEED_DEMO` override the file.
 
-The tables are created automatically the first time the backend starts (`backend/src/main/resources/schema.sql`).
+The tables are created automatically when the backend starts (Spring runs `backend/src/main/resources/schema.sql`).
 
 ## 2. Run everything with one command
 
@@ -41,17 +42,18 @@ opens the browser. To stop, close those two windows.
 **Terminal 1 — backend API**
 ```
 cd backend
-.\mvnw.cmd compile exec:java
+.\mvnw.cmd spring-boot:run
 ```
-Wait for `ReadyTime API is running: http://localhost:8080/api`.
+Wait for `Started ReadyTimeApplication`. (Or build a single runnable jar with `.\mvnw.cmd package`
+and start it with `java -jar targeteadytime-1.0.jar`.)
 `mvnw.cmd` is the Maven Wrapper: it downloads Maven by itself, so you do not need to install Maven.
 
-**Terminal 2 — frontend website**
+**Terminal 2 — frontend website (React + Vite)**
 ```
 cd frontend
-npx http-server -p 5500 -c-1
+npm install      (first time only)
+npm run dev
 ```
-(Or open `frontend/index.html` with the VS Code "Live Server" extension.)
 
 Open **http://localhost:5500**. Stop either server with `Ctrl + C`.
 
@@ -74,7 +76,7 @@ The demo data is only created once (it is skipped if `provider@readytime.com` al
 To turn it off, set `seed.demo=false` in `backend/config.properties` (or `SEED_DEMO=false`).
 These passwords are public - change them on any server other people can reach.
 
-If the backend runs somewhere else, change `API_URL` in `frontend/js/config.js`.
+If the backend runs somewhere else, copy `frontend/.env.example` to `frontend/.env` and change `VITE_API_URL`.
 
 ## 3. Try it out (quick demo)
 
@@ -86,45 +88,52 @@ If the backend runs somewhere else, change `API_URL` in `frontend/js/config.js`.
 
 ```
 backend/
-  pom.xml, mvnw.cmd, config.example.properties
+  pom.xml (Spring Boot parent), mvnw.cmd, config.example.properties
   src/main/java/com/readytime/
-    Main.java            starts the API server
-    Config.java          reads config.properties / environment variables
-    Database.java        JDBC connections, run() and transaction() helpers
+    ReadyTimeApplication.java  starts Spring Boot (embedded Tomcat on port 8080)
     TimeProvider.java    "what time is it?" (Africa/Kigali) - replaceable in tests
     AppException.java    expected errors with an HTTP status code
+    config/AppConfig.java   CORS, @CurrentUser support, JSON date format, clock bean
     model/               simple data records (User, Appointment, ...)
-    dao/                 SQL for each table
-    service/             ALL business rules + role checks
-    web/                 Router (+ CORS), request helpers, list of API routes
-  src/main/resources/schema.sql   database tables
+    repository/          SQL for each table (@Repository classes using JdbcTemplate)
+    service/             ALL business rules + role checks (@Service, @Transactional);
+                         DemoData.java creates the first admin + demo accounts on start
+    web/                 @RestController classes (Auth, Admin, Catalog, Appointment),
+                         dto/Requests.java (JSON request bodies), CurrentUser + CurrentUserResolver
+                         (reads the Bearer token), ApiExceptionHandler (errors -> {"error": "..."})
+  src/main/resources/
+    application.properties  Spring Boot settings (database, port, CORS, demo data)
+    schema.sql              database tables (run on every start)
 frontend/                        ALL screens and design live here (the backend has none)
-  index.html                     page shell: sidebar + top bar + <main id="app">
-  css/style.css                  all styling (colors defined once at the top)
-  js/
-    config.js                    API_URL (where the backend runs)
+  package.json, vite.config.js   React + Vite (npm run dev / build / preview), dev server on port 5500
+  index.html                     page shell that loads src/main.jsx
+  .env.example                   VITE_API_URL (where the backend runs)
+  public/images/                 photos (sources in CREDITS.md)
+  src/
+    main.jsx, App.jsx            start: HashRouter, checks login, picks the public or app layout
+    routes.jsx                   public pages + which sidebar pages each role has
     api.js                       the ONLY file that calls the backend (fetch + token header)
-    session.js                   who is logged in + the saved token
-    utils.js                     small helpers (escape HTML, dates, badges, stat cards)
-    icons.js                     small SVG icons
-    routes.js                    which sidebar pages each role has
-    layout.js                    draws the sidebar, page title and clock
-    main.js                      start: checks login, shows the page matching the address (#/...)
-    pages/                       one file per page
-      public/          home.js, how-it-works.js, for-business.js, login.js, signup.js
-      client/          book.js, my-appointments.js
-      provider/        schedule.js, hours.js, services.js
-      system-admin/    overview.js, moderation.js, businesses.js, users.js
+    config.js                    API_URL (from VITE_API_URL)
+    auth/                        SessionContext.jsx (who is logged in), token.js (saved token)
+    layouts/                     PublicLayout.jsx (top menu), AppLayout.jsx (sidebar, title, clock)
+    utils.js, validation.js      helpers (dates, money, badges) and form checks
+    style.css                    all styling (colors defined once at the top)
+    pages/                       one component per page
+      public/          Home, HowItWorks, ForBusiness, Login, Signup
+      client/          Book, MyAppointments
+      provider/        Schedule, Hours, Services
+      account/         Profile, Reports
+      system-admin/    Overview, Moderation, Businesses, Users
     components/                  reusable parts used by several pages
-      modal.js, appointment-actions.js, appointments-table.js, services-manager.js, hours-editor.js
+      Modal, Message, AppointmentActions, AppointmentsTable, ServicesManager, HoursEditor, Icon, ...
 ```
 
 **Public pages (top menu, before login):** Home (`#/`), How it works (`#/how-it-works`),
 For businesses (`#/for-business`), Log in (`#/login`) and Sign up in steps (`#/signup`):
 client = name → email → password → review; service provider (`#/signup?as=provider`) = name → email →
 password → business (name, address) → review. The new user is logged in automatically.
-Photos are in `frontend/images/` (free Pexels photos, sources in `images/CREDITS.md`).
-Form checks in `js/validation.js` use the same limits as the backend (`Validate.java`).
+Photos are in `frontend/public/images/` (free Pexels photos, sources in `CREDITS.md`).
+Form checks in `src/validation.js` use the same limits as the backend (`Validate.java`).
 
 **Pages per role (sidebar):**
 
@@ -137,12 +146,7 @@ Form checks in `js/validation.js` use the same limits as the backend (`Validate.
 The part after `#` in the address picks the page, so each page has its own link and the browser's
 Back button works. Every number on the screen is calculated from real API data.
 
-The frontend uses JavaScript modules (`import` / `export`), so it must be opened through a web
-server (http-server or Live Server), not by double-clicking `index.html`.
-
-**Moving to React later:** only the `frontend/` folder changes. Each file in `pages/` and
-`components/` becomes a React component, and `api.js` can be reused almost as it is.
-The Java backend stays exactly the same.
+`npm run build` creates a static production version in `frontend/dist/` that any web server can host.
 
 ## 5. How login works
 

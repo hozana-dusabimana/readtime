@@ -4,38 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>ReadyTime</title>
-    <link rel="stylesheet" href="css/style.css">
 </head>
 <body class="logged-out">
-
-<!-- PUBLIC top menu (only shown when nobody is logged in). Filled in by js/layout.js -->
-<header class="public-nav" id="public-nav"></header>
-
-<!-- APP left menu (only shown after login). Filled in by js/layout.js -->
-<aside class="sidebar" id="sidebar"></aside>
-
-<div class="main">
-    <header class="topbar">
-        <div class="row" style="align-items: center;">
-            <button class="secondary icon-only menu-button" id="menu-button" aria-label="Open menu">&#9776;</button>
-            <div>
-                <h1 id="page-title"></h1>
-                <div class="subtitle" id="page-subtitle"></div>
-            </div>
-        </div>
-        <span class="chip" id="clock"></span>
-    </header>
-
-    <!-- Every page is drawn in here by the files in js/pages -->
-    <main id="app">Loading...</main>
-</div>
-
-<!-- PUBLIC footer (only shown when nobody is logged in) -->
-<footer class="public-footer" id="public-footer"></footer>
-
-<div id="message" class="message" hidden></div>
-
-<!-- type="module" lets the JavaScript files import each other -->
-<script type="module" src="js/main.js"></script>
+<div id="root"></div>
+<script type="module" src="/src/main.jsx"></script>
 </body>
 </html>

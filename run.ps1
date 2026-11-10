@@ -8,8 +8,9 @@
 # What it does:
 #   1. Checks Java, Node.js and PostgreSQL are installed and running
 #   2. Creates backend\config.properties (if missing) and the database (if missing)
-#   3. Starts the backend API  (new window, http://localhost:8080/api)
-#   4. Starts the frontend     (new window, http://localhost:5500)
+#   3. Starts the Spring Boot backend API  (new window, http://localhost:8080/api)
+#   4. Installs the React frontend's packages (first time only) and starts it with Vite
+#      (new window, http://localhost:5500)
 #   5. Opens the browser
 # To stop: close the two windows (or press Ctrl + C in each).
 
@@ -28,16 +29,28 @@ function Fail($text) {
     exit 1
 }
 
-# True if something answers on host:port (tries for at most 1 second).
+# True if something answers on host:port (tries for at most 1 second per address).
+# "localhost" is checked on IPv4 (127.0.0.1) AND IPv6 (::1): the Vite dev server
+# (Node.js 17+) often listens only on ::1.
 function Test-Port($hostName, $port) {
-    $client = New-Object System.Net.Sockets.TcpClient
-    try {
-        return $client.ConnectAsync($hostName, [int]$port).Wait(1000) -and $client.Connected
-    } catch {
-        return $false
-    } finally {
-        $client.Close()
+    $addresses = if ($hostName -eq "localhost") { @("127.0.0.1", "::1") } else { @($hostName) }
+    foreach ($address in $addresses) {
+        $client = $null
+        try {
+            $ip = $null
+            if ([System.Net.IPAddress]::TryParse($address, [ref]$ip)) {
+                $client = New-Object System.Net.Sockets.TcpClient($ip.AddressFamily)
+            } else {
+                $client = New-Object System.Net.Sockets.TcpClient
+            }
+            if ($client.ConnectAsync($address, [int]$port).Wait(1000) -and $client.Connected) { return $true }
+        } catch {
+            # not reachable on this address - try the next one
+        } finally {
+            if ($client) { $client.Close() }
+        }
     }
+    return $false
 }
 
 Write-Host ""
@@ -55,9 +68,9 @@ if ($javaVersionLine -match '"(\d+)') {
 }
 Ok "Java: $javaVersionLine"
 
-# ---- Node.js (used to serve the frontend) ----
-if (-not (Get-Command npx -ErrorAction SilentlyContinue)) {
-    Fail "Node.js is not installed. Install it from https://nodejs.org (needed to serve the frontend)."
+# ---- Node.js (runs the React frontend) ----
+if (-not (Get-Command npm -ErrorAction SilentlyContinue)) {
+    Fail "Node.js is not installed. Install it from https://nodejs.org (needed for the React frontend)."
 }
 Ok "Node.js: $(node -v)"
 
@@ -120,9 +133,9 @@ Ok "Ports $backendPort and $frontendPort are free"
 
 # ---- Start backend ----
 Write-Host ""
-Write-Host "2. Starting the backend API (new window)"
+Write-Host "2. Starting the Spring Boot backend API (new window)"
 Start-Process powershell -WorkingDirectory $backend -ArgumentList "-NoExit", "-Command",
-    "`$host.UI.RawUI.WindowTitle = 'ReadyTime BACKEND (close to stop)'; .\mvnw.cmd compile exec:java"
+    "`$host.UI.RawUI.WindowTitle = 'ReadyTime BACKEND (close to stop)'; .\mvnw.cmd spring-boot:run"
 
 Info "Waiting for the backend (the first start can take a few minutes while Maven downloads)..."
 $ready = $false
@@ -142,9 +155,17 @@ Ok "Backend API: http://localhost:$backendPort/api"
 
 # ---- Start frontend ----
 Write-Host ""
-Write-Host "3. Starting the frontend (new window)"
+Write-Host "3. Starting the React frontend (new window)"
+if (-not (Test-Path (Join-Path $frontend "node_modules"))) {
+    Info "Installing frontend packages (npm install, first time only)..."
+    Push-Location $frontend
+    npm install --no-fund --no-audit
+    $installOk = ($LASTEXITCODE -eq 0)
+    Pop-Location
+    if (-not $installOk) { Fail "npm install failed in the frontend folder. Look at the messages above." }
+}
 Start-Process powershell -WorkingDirectory $frontend -ArgumentList "-NoExit", "-Command",
-    "`$host.UI.RawUI.WindowTitle = 'ReadyTime FRONTEND (close to stop)'; npx --yes http-server -p $frontendPort -c-1"
+    "`$host.UI.RawUI.WindowTitle = 'ReadyTime FRONTEND (close to stop)'; npm run dev"
 
 $ready = $false
 for ($i = 0; $i -lt 120; $i++) {

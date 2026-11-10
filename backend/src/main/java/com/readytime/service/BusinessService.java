@@ -1,34 +1,33 @@
 package com.readytime.service;
 
-import com.readytime.Database;
-import com.readytime.dao.BusinessDao;
-import com.readytime.dao.UserDao;
 import com.readytime.model.Business;
 import com.readytime.model.Role;
 import com.readytime.model.User;
+import com.readytime.repository.BusinessRepository;
+import com.readytime.repository.UserRepository;
+import org.springframework.stereotype.Service;
 
 import java.util.List;
 
 /** Browsing businesses and their service providers. */
+@Service
 public class BusinessService {
 
-    private final Database db;
-    private final UserDao userDao = new UserDao();
-    private final BusinessDao businessDao = new BusinessDao();
+    private final UserRepository userRepo;
+    private final BusinessRepository businessRepo;
 
-    public BusinessService(Database db) {
-        this.db = db;
+    public BusinessService(UserRepository userRepo, BusinessRepository businessRepo) {
+        this.userRepo = userRepo;
+        this.businessRepo = businessRepo;
     }
 
     /** System admins see every business; everyone else only sees active ones. */
     public List<Business> listBusinesses(User me) {
-        boolean onlyActive = me.role() != Role.SYSTEM_ADMIN;
-        return db.run(conn -> businessDao.findAll(conn, onlyActive));
+        return businessRepo.findAll(me.role() != Role.SYSTEM_ADMIN);
     }
 
     /** Providers of a business. Disabled provider accounts are hidden. */
     public List<User> listProviders(int businessId) {
-        return db.run(conn -> userDao.findByBusinessAndRole(conn, businessId, Role.PROVIDER)
-                .stream().filter(User::active).toList());
+        return userRepo.findByBusinessAndRole(businessId, Role.PROVIDER).stream().filter(User::active).toList();
     }
 }
