@@ -1,24 +1,28 @@
 package com.readytime.service;
 
 import com.readytime.AppException;
-import com.readytime.Database;
 import com.readytime.TimeProvider;
-import com.readytime.dao.BusinessDao;
-import com.readytime.dao.SessionDao;
-import com.readytime.dao.UserDao;
 import com.readytime.model.Role;
 import com.readytime.model.User;
+import com.readytime.repository.BusinessRepository;
+import com.readytime.repository.SessionRepository;
+import com.readytime.repository.UserRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import javax.crypto.SecretKeyFactory;
-import java.sql.Connection;
-import java.sql.SQLException;
 import javax.crypto.spec.PBEKeySpec;
 import java.security.MessageDigest;
 import java.security.SecureRandom;
 import java.util.Base64;
 
 /** Registration, login, logout and password hashing. */
+@Service
 public class AuthService {
+
+    private static final Logger log = LoggerFactory.getLogger(AuthService.class);
 
     public static final int SESSION_HOURS = 8;
 
@@ -26,16 +30,18 @@ public class AuthService {
     public record LoginResult(String token, User user) {
     }
 
-    private final Database db;
     private final TimeProvider time;
-    private final UserDao userDao = new UserDao();
-    private final SessionDao sessionDao = new SessionDao();
-    private final BusinessDao businessDao = new BusinessDao();
+    private final UserRepository userRepo;
+    private final SessionRepository sessionRepo;
+    private final BusinessRepository businessRepo;
     private final SecureRandom random = new SecureRandom();
 
-    public AuthService(Database db, TimeProvider time) {
-        this.db = db;
+    public AuthService(TimeProvider time, UserRepository userRepo, SessionRepository sessionRepo,
+                       BusinessRepository businessRepo) {
         this.time = time;
+        this.userRepo = userRepo;
+        this.sessionRepo = sessionRepo;
+        this.businessRepo = businessRepo;
     }
 
     /** Public sign-up: always creates a CLIENT account. */
@@ -47,6 +53,7 @@ public class AuthService {
      * Public sign-up for a SERVICE PROVIDER: creates their business and their provider account
      * together. Both are saved in ONE transaction, so if anything fails nothing is saved.
      */
+    @Transactional
     public User registerProvider(String fullName, String email, String password,
                                  String businessName, String businessAddress) {
         String name = Validate.text(fullName, "Full name", 2, 100);
@@ -54,55 +61,46 @@ public class AuthService {
         Validate.password(password);
         String cleanBusinessName = Validate.text(businessName, "Business name", 2, 100);
         String cleanAddress = Validate.text(businessAddress, "Address", 2, 200);
-        String hash = hashPassword(password);
-        return db.transaction(conn -> {
-            requireEmailFree(conn, cleanEmail, -1);
-            int businessId = businessDao.insert(conn, cleanBusinessName, cleanAddress);
-            int id = userDao.insert(conn, name, cleanEmail, hash, Role.PROVIDER, businessId);
-            return userDao.findById(conn, id);
-        });
+        requireEmailFree(cleanEmail, -1);
+        int businessId = businessRepo.insert(cleanBusinessName, cleanAddress);
+        int id = userRepo.insert(name, cleanEmail, hashPassword(password), Role.PROVIDER, businessId);
+        return userRepo.findById(id);
     }
 
-    /** Used by register() and by admins who create provider accounts. */
+    /** Used by register() and by the system admin who creates accounts. */
+    @Transactional
     public User createUser(String fullName, String email, String password, Role role, Integer businessId) {
         String name = Validate.text(fullName, "Full name", 2, 100);
         String cleanEmail = Validate.email(email);
         Validate.password(password);
-        String hash = hashPassword(password);
-        return db.run(conn -> {
-            if (userDao.findByEmail(conn, cleanEmail) != null) {
-                throw new AppException(409, "An account with this email already exists.");
-            }
-            int id = userDao.insert(conn, name, cleanEmail, hash, role, businessId);
-            return userDao.findById(conn, id);
-        });
+        requireEmailFree(cleanEmail, -1);
+        int id = userRepo.insert(name, cleanEmail, hashPassword(password), role, businessId);
+        return userRepo.findById(id);
     }
 
+    @Transactional
     public LoginResult login(String email, String password) {
         if (email == null || password == null) {
             throw new AppException(400, "Email and password are required.");
         }
-        return db.run(conn -> {
-            User user = userDao.findByEmail(conn, email.trim().toLowerCase());
-            // Same message for "no such email" and "wrong password", so attackers
-            // cannot find out which emails are registered.
-            if (user == null || !checkPassword(password, userDao.findPasswordHash(conn, user.id()))) {
-                throw new AppException(401, "Wrong email or password.");
-            }
-            if (!user.active()) {
-                throw new AppException(403, "This account has been disabled. Contact the system admin.");
-            }
-            String token = newToken();
-            sessionDao.insert(conn, token, user.id(), time.now().plusHours(SESSION_HOURS));
-            return new LoginResult(token, user);
-        });
+        User user = userRepo.findByEmail(email.trim().toLowerCase());
+        // Same message for "no such email" and "wrong password", so attackers
+        // cannot find out which emails are registered.
+        if (user == null || !checkPassword(password, userRepo.findPasswordHash(user.id()))) {
+            throw new AppException(401, "Wrong email or password.");
+        }
+        if (!user.active()) {
+            throw new AppException(403, "This account has been disabled. Contact the system admin.");
+        }
+        String token = newToken();
+        sessionRepo.insert(token, user.id(), time.now().plusHours(SESSION_HOURS));
+        return new LoginResult(token, user);
     }
 
     public void logout(String token) {
-        db.run(conn -> {
-            sessionDao.delete(conn, token);
-            return null;
-        });
+        if (token != null) {
+            sessionRepo.delete(token);
+        }
     }
 
     /** Returns the logged-in user for a session token, or null if not logged in. */
@@ -110,44 +108,39 @@ public class AuthService {
         if (token == null || token.isBlank()) {
             return null;
         }
-        return db.run(conn -> {
-            Integer userId = sessionDao.findUserId(conn, token, time.now());
-            if (userId == null) {
-                return null;
-            }
-            User user = userDao.findById(conn, userId);
-            return (user != null && user.active()) ? user : null;
-        });
+        Integer userId = sessionRepo.findUserId(token, time.now());
+        if (userId == null) {
+            return null;
+        }
+        User user = userRepo.findById(userId);
+        return (user != null && user.active()) ? user : null;
     }
 
     // ---------- My Profile (every logged-in user) ----------
 
     /** Changes the logged-in user's own name and email. */
+    @Transactional
     public User updateProfile(User me, String fullName, String email) {
         String name = Validate.text(fullName, "Full name", 2, 100);
         String cleanEmail = Validate.email(email);
-        return db.run(conn -> {
-            requireEmailFree(conn, cleanEmail, me.id());
-            userDao.updateNameAndEmail(conn, me.id(), name, cleanEmail);
-            return userDao.findById(conn, me.id());
-        });
+        requireEmailFree(cleanEmail, me.id());
+        userRepo.updateNameAndEmail(me.id(), name, cleanEmail);
+        return userRepo.findById(me.id());
     }
 
     /** Changes the logged-in user's own password. The current password must be given. */
+    @Transactional
     public void changePassword(User me, String currentPassword, String newPassword) {
         Validate.password(newPassword);
-        db.run(conn -> {
-            if (currentPassword == null || !checkPassword(currentPassword, userDao.findPasswordHash(conn, me.id()))) {
-                throw new AppException(400, "Your current password is wrong.");
-            }
-            userDao.updatePasswordHash(conn, me.id(), hashPassword(newPassword));
-            return null;
-        });
+        if (currentPassword == null || !checkPassword(currentPassword, userRepo.findPasswordHash(me.id()))) {
+            throw new AppException(400, "Your current password is wrong.");
+        }
+        userRepo.updatePasswordHash(me.id(), hashPassword(newPassword));
     }
 
     /** Throws 409 if ANOTHER account already uses this email. */
-    static void requireEmailFree(Connection conn, String email, int ownId) throws SQLException {
-        User other = new UserDao().findByEmail(conn, email);
+    public void requireEmailFree(String email, int ownId) {
+        User other = userRepo.findByEmail(email);
         if (other != null && other.id() != ownId) {
             throw new AppException(409, "An account with this email already exists.");
         }
@@ -155,10 +148,9 @@ public class AuthService {
 
     /** Creates the first System Admin on the very first start, so someone can log in. */
     public void createFirstSystemAdmin(String email, String password) {
-        boolean exists = db.run(conn -> userDao.existsWithRole(conn, Role.SYSTEM_ADMIN));
-        if (!exists) {
+        if (!userRepo.existsWithRole(Role.SYSTEM_ADMIN)) {
             createUser("System Admin", email, password, Role.SYSTEM_ADMIN, null);
-            System.out.println("Created first system admin: " + email + " / " + password);
+            log.info("Created first system admin: {} / {}", email, password);
         }
     }
 
