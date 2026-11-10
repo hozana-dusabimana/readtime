@@ -9,6 +9,7 @@ import Signup from './pages/public/Signup.jsx';
 import Book from './pages/client/Book.jsx';
 import MyAppointments from './pages/client/MyAppointments.jsx';
 import Schedule from './pages/provider/Schedule.jsx';
+import Bookings from './pages/provider/Bookings.jsx';
 import MyHours from './pages/provider/Hours.jsx';
 import MyServices from './pages/provider/Services.jsx';
 import PlatformOverview from './pages/system-admin/Overview.jsx';
@@ -47,6 +48,8 @@ export const ROUTES = {
         { section: 'My work' },
         { path: '/schedule', label: "Today's Schedule", icon: 'calendar', component: Schedule,
           title: 'Schedule & Attendance', subtitle: 'Your appointments by day. Mark visits as completed or no-show.' },
+        { path: '/bookings', label: 'All Bookings', icon: 'list', component: Bookings,
+          title: 'All Bookings', subtitle: 'Every appointment clients have booked with you, on any day.' },
         { path: '/hours', label: 'Working Hours', icon: 'clock', component: MyHours,
           title: 'Working Hours', subtitle: 'Your weekly availability. Breaks are the gaps between periods.' },
         { path: '/services', label: 'My Services', icon: 'tag', component: MyServices,
